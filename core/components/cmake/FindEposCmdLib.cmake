@@ -35,18 +35,11 @@ if(EposCmdLib_INCLUDE_DIR)
     # Determine root based on include dir
     get_filename_component(EposCmdLib_ROOT ${EposCmdLib_INCLUDE_DIR} DIRECTORY)
 
-    # Determine architecture-specific subfolder if needed
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(_ECL_ARCH "x86_64")
-    else()
-        set(_ECL_ARCH "x86")
-    endif()
-
     # Look for the versioned shared object
     find_library(EposCmdLib_LIBRARY
         NAMES EposCmd EposCmd.so.6.8.10
-        HINTS ${EposCmdLib_ROOT}/lib/${_ECL_ARCH}
-              /opt/EposCmdLib_6.8.1.0/lib/${_ECL_ARCH}
+        HINTS ${EposCmdLib_ROOT}/lib/x86_64
+              /opt/EposCmdLib_6.8.1.0/lib/x86_64
         DOC "EPOS Command shared library"
     )
 

@@ -48,8 +48,6 @@ class CISST_EXPORT mtsMaxonEPOS : public mtsTaskContinuous
 
     ~mtsMaxonEPOS();
 
-    enum { GALIL_MAX_AXES = 8 };
-
     // cisstMultiTask functions
     void Configure(const std::string &fileName) override;
     void Startup(void) override;
@@ -97,9 +95,6 @@ protected:
 
         std::vector<void*> mHandles;
         // std::vector<std::string> mCalibrationFile;
-
-        RobotData();
-        ~RobotData();
 
         // Move joint to specified position
         //  servo_jp:  uses Position Tracking mode (PT)

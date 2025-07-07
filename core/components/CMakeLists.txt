@@ -12,7 +12,7 @@
 cmake_minimum_required (VERSION 3.10)
 project (sawMaxonEPOS VERSION 0.1.0)
 
-# So we can use Findgclib.cmake
+# So we can use FindEposCmdLib.cmake
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # create a list of required cisst libraries
@@ -79,7 +79,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
     target_link_libraries (
       sawMaxonEPOS
-      ${gclib_LIBRARIES})
+      ${EposCmdLib_LIBRARY})
 
     cisst_target_link_libraries (
       sawMaxonEPOS

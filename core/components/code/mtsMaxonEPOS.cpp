@@ -34,6 +34,7 @@ mtsMaxonEPOS::~mtsMaxonEPOS()
     Close();
 }
 
+void mtsMaxonEPOS::Cleanup(){}
 
 void mtsMaxonEPOS::SetupInterfaces(void)
 {
@@ -51,6 +52,7 @@ void mtsMaxonEPOS::SetupInterfaces(void)
         prov->AddCommandReadState(this->StateTable, mRobot.m_measured_js, "measured_js");
         prov->AddCommandReadState(this->StateTable, mRobot.m_setpoint_js, "setpoint_js");
         prov->AddCommandReadState(this->StateTable, mRobot.m_op_state, "operating_state");
+        prov->AddCommandReadState(this->StateTable, mRobot.mActuatorState, "GetActuatorState");
 
         prov->AddCommandWrite(&mtsMaxonEPOS::RobotData::servo_jp, &mRobot, "servo_jp");
         prov->AddCommandWrite(&mtsMaxonEPOS::RobotData::move_jp,  &mRobot, "move_jp");
@@ -512,13 +514,7 @@ void mtsMaxonEPOS::RobotData::move_jp(const prmPositionJointSet & jtpos)
 
     mErrorCode = 0;
     try {
-        // Stop moving
-        hold();
-
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
-            
-            if (mActuatorState.MotorOff()[axis]){continue;}
-            
             // 1) Active Profile Position Mode
             if(mState[axis] != ST_PPM){
                 if (!VCS_ActivateProfilePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
