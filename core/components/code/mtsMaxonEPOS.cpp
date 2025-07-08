@@ -160,31 +160,37 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
                                 const_cast<char*>(mRobot.interfaceName.c_str()),
                                 const_cast<char*>(mRobot.portName.c_str()),
                                 &mRobot.mErrorCode);
-    if (mRobot.mHandles[0] == nullptr || mRobot.mErrorCode != 0){
+
+    if (mRobot.mHandles[0] != nullptr && mRobot.mErrorCode == 0){
+        std::cout<<"Root node successfully connected"<<std::endl;
         for (unsigned int j = 1; j < mRobot.mNumAxes; j++){
             mRobot.mHandles[j] = VCS_OpenSubDevice(mRobot.mHandles[0],
                                 const_cast<char*>(mRobot.deviceName.c_str()),
                                 const_cast<char*>("CANopen"),
                                 &mRobot.mErrorCode);
             if(mRobot.mHandles[j]==0){
-                CMN_LOG_CLASS_INIT_ERROR << "Configure: VCS_OpenSubDevice " << j << " failed (errorCode = " << mRobot.mErrorCode << ")" << std::endl;
+                CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_OpenSubDevice " << j << " failed (errorCode = " << mRobot.mErrorCode << ")" << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
     }
     else{
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: VCS_OpenDevice failed (errorCode = " << mRobot.mErrorCode << ")" << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_OpenDevice failed (errorCode = " << mRobot.mErrorCode << ")" << std::endl;
         exit(EXIT_FAILURE);
     }
 
+    osaSleep(500*cmn_ms);
+    VCS_ClearFault(mRobot.mHandles[0], 0, &mRobot.mErrorCode);
+    osaSleep(500*cmn_ms);
+
     unsigned int oldTimeout;
     if (!VCS_GetProtocolStackSettings(mRobot.mHandles[0], &mRobot.baudrate, &oldTimeout, &mRobot.mErrorCode)) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: VCS_GetProtocolStackSettings failed (errorCode = "
+        CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_GetProtocolStackSettings failed (errorCode = "
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
     }
     if (!VCS_SetProtocolStackSettings(mRobot.mHandles[0], mRobot.baudrate, mRobot.mTimeout, &mRobot.mErrorCode)) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: VCS_SetProtocolStackSettings failed (errorCode = "
+        CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_SetProtocolStackSettings failed (errorCode = "
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
     }
@@ -197,9 +203,9 @@ void mtsMaxonEPOS::Run()
     int isFault = false;
     // First axis USB, rest of the axis are CAN
     for (size_t axis = 0; axis < mRobot.mNumAxes; ++axis) {
+
         // Zero errorCode
         mRobot.mErrorCode = 0;
-
         if (VCS_GetFaultState(mRobot.mHandles[axis],  mRobot.mAxisToNodeIDMap[axis], &isFault,  &mRobot.mErrorCode)) {
             if(isFault){
                 mRobot.mActuatorState.MotorOff()[axis] = false;
@@ -211,7 +217,7 @@ void mtsMaxonEPOS::Run()
             mRobot.mInterface->SendError(mRobot.name + ": GetFaultState failed (err=" + std::to_string(mRobot.mErrorCode) + ")");
             break;
         };
-        
+
         // Read position
         int positionCounts = 0;
         if (VCS_GetPositionIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &positionCounts, &mRobot.mErrorCode)) {
@@ -262,7 +268,6 @@ void mtsMaxonEPOS::Run()
     RunEvent();
 
     // Could instead loop through each provided interface, call ProcessMailBoxes,
-    // catch exceptions and call the appropriate mInterface->SendError.
     try {
         ProcessQueuedCommands();
     }

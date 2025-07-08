@@ -1,5 +1,4 @@
 // Eye Snake
-// position_bits_to_SI.offset is the offset, in bits
 {
     "file_version": 1,
     "name": "I2RIS",
@@ -10,13 +9,13 @@
     "timeout":1000,
     "axes": [
     {
-        "nodeid": 0 
-    },
-    {
-        "nodeid": 1
+        "nodeid": 1 
     },
     {
         "nodeid": 2
+    },
+    {
+        "nodeid": 3
     }
     ]
 }

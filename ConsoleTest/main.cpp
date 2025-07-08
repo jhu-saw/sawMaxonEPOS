@@ -31,8 +31,8 @@ http://www.cisst.org/cisst/license.txt.
 class MaxonClient : public mtsTaskMain {
 private:
     size_t NumAxes;
-    vctDoubleVec jtgoal, jtvel;
-    vctDoubleVec jtpos;
+    vctDoubleVec jtpgoal, jtvgoal;
+    vctDoubleVec jtpos, jtvel;
 
     prmStateJoint m_measured_js;
     prmStateJoint m_setpoint_js;
@@ -83,7 +83,7 @@ public:
     {
         std::cout << "Available commands:" << std::endl
                   << "  m: position move joints (servo_jp)" << std::endl
-                  << "  r: relative move joints (servo_jr)" << std::endl
+                  << "  p: profile move joints (move_jr)" << std::endl
                   << "  v: velocity move joints (servo_jv)" << std::endl
                   << "  s: stop move (hold)" << std::endl
                   << "  c: send command" << std::endl
@@ -92,8 +92,6 @@ public:
                   << "  n: disable motor power" << std::endl
                   << "  a: get actuator state" << std::endl
                   << "  o: get operating state" << std::endl
-                  << "  i: display header info" << std::endl
-                  << "  z: home robot" << std::endl
                   << "  q: quit" << std::endl;
     }
 
@@ -105,8 +103,11 @@ public:
         if (psj) NumAxes = psj->Position().size();
         std::cout << "MaxonClient: Detected " << NumAxes << " axes" << std::endl;
         jtpos.SetSize(NumAxes);
-        jtgoal.SetSize(NumAxes);
         jtvel.SetSize(NumAxes);
+
+        jtpgoal.SetSize(NumAxes);
+        jtvgoal.SetSize(NumAxes);
+        
         jtposSet.Goal().SetSize(NumAxes);
         jtvelSet.SetSize(NumAxes);
         PrintHelp();
@@ -118,6 +119,7 @@ public:
         measured_js(m_measured_js);
         setpoint_js(m_setpoint_js);
         m_measured_js.GetPosition(jtpos);
+        m_measured_js.GetVelocity(jtvel);
         operating_state(m_op_state);
 
         char c = 0;
@@ -127,41 +129,44 @@ public:
             switch (c) {
 
             case 'm':   // position move joint
-                std::cout << std::endl << "Enter joint positions (mm): ";
+                std::cout << std::endl << "Enter joint positions (encoder count): ";
                 for (i = 0; i < NumAxes; i++)
-                    std::cin >> jtgoal[i];
-                std::cout << "Moving to " << jtgoal << std::endl;
-                jtposSet.SetGoal(jtgoal);
+                    std::cin >> jtpgoal[i];
+                std::cout << "Moving to " << jtpgoal << std::endl;
+                jtposSet.SetGoal(jtpgoal);
                 servo_jp(jtposSet);
                 break;
 
             case 'p':   // profile move joint
-                std::cout << std::endl << "Enter relative joint positions (mm): ";
+                std::cout << std::endl << "Enter joint positions (encoder count): ";
                 for (i = 0; i < NumAxes; i++)
-                    std::cin >> jtgoal[i];
-                std::cout << "Relative move by " << jtgoal << std::endl;
-                jtposSet.SetGoal(jtgoal);
+                    std::cin >> jtpgoal[i];
+                std::cout << "Relative move by " << jtpgoal << std::endl;
+                jtposSet.SetGoal(jtpgoal);
                 move_jp(jtposSet);
                 break;
 
             case 'v':   // velocity move joint
-                std::cout << std::endl << "Enter joint velocities (mm/s): ";
+                std::cout << std::endl << "Enter joint velocities (encoder count/s): ";
                 for (i = 0; i < NumAxes; i++)
-                    std::cin >> jtvel[i];
-                jtvelSet.SetGoal(jtvel);
+                    std::cin >> jtvgoal[i];
+                jtvelSet.SetGoal(jtvgoal);
                 servo_jv(jtvelSet);
                 break;
 
             case 's':   // stop move (hold)
                 state_command(std::string("pause"));
+                std::cout << " System pause" << std::endl;
                 break;
                 
             case 'e':   // enable motor power
                 state_command(std::string("enable"));
+                std::cout << " System enable" << std::endl;
                 break;
 
             case 'n':   // disable motor power
                 state_command(std::string("disable"));
+                std::cout << " System disabled" << std::endl;
                 break;
 
             case 'h':
@@ -190,11 +195,9 @@ public:
         printf("POS: [");
         for (i = 0; i < jtpos.size(); i++)
             printf(" %7.2lf ", jtpos[i]);
-        // printf("] TORQUE: [");
-        // vctDoubleVec jtt;
-        // m_setpoint_js.GetEffort(jtt);
-        // for (i = 0; i < jtt.size(); i++)
-        //     printf(" %7.2lf ", jtt[i]);
+        printf("] VELOCITY: [");
+        for (i = 0; i < jtvel.size(); i++)
+            printf(" %7.2lf ", jtvel[i]);
         printf("]\r");
 
         osaSleep(0.01);  // to avoid taking too much CPU time
@@ -234,15 +237,13 @@ int main(int argc, char **argv)
         delete MaxonServer;
         return -1;
     }
-
     componentManager->CreateAll();
     componentManager->StartAll();
 
     // Main thread passed to client task
 
-    MaxonServer->Kill();
+    componentManager->KillAll();
     componentManager->WaitForStateAll(mtsComponentState::FINISHED, 2.0 * cmn_s);
-
     componentManager->Cleanup();
 
     // stop all logs
