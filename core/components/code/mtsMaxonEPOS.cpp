@@ -59,14 +59,12 @@ void mtsMaxonEPOS::SetupInterfaces(void)
         prov->AddCommandWrite(&mtsMaxonEPOS::RobotData::servo_jv, &mRobot, "servo_jv");
 
         prov->AddCommandWrite(&mtsMaxonEPOS::RobotData::state_command, &mRobot, "state_command", std::string(""));
+        prov->AddEventWrite(mRobot.operating_state, "operating_state", prmOperatingState());
 
         // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::EnableMotorPower,  &mRobot, "EnableMotorPower");
         // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::DisableMotorPower, &mRobot, "DisableMotorPower");
         // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::hold,     &mRobot, "hold");
 
-        // prov->AddCommandReadState(this->StateTable, mRobot.mSpeed, "GetSpeed");
-        // prov->AddCommandReadState(this->StateTable, mRobot.mAccel, "GetAccel");
-        // prov->AddCommandReadState(this->StateTable, mRobot.mDecel, "GetDecel");
     }
 }
 
@@ -138,20 +136,14 @@ void mtsMaxonEPOS::Configure(const std::string& fileName)
     mRobot.mHandles.resize(numAxes);
     for (unsigned int axis = 0; axis < numAxes; axis++){
         mRobot.mAxisToNodeIDMap[axis] = jsonConfig["axes"][axis]["nodeid"].asInt();
-        // mRobot.mCalibrationFile.push_back(jsonConfig["axes"][axis]["calibration_file"].asString(););
     }
 
-    // Call SetupInterfaces after Configure because we need to know the correct sizes of
-    // the dynamic vectors, which are based on the number of configured axes.
-    // These sizes should be set before calling StateTable.AddData and AddCommandReadState;
-    // in the latter case, this ensures that the argument prototype has the correct size.
     SetupInterfaces();
 }
 
 
 void mtsMaxonEPOS::Startup()//const std::string & fileName
 {
-
     // Zero Error Code
     mRobot.mErrorCode = 0;
     
@@ -179,9 +171,21 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
         exit(EXIT_FAILURE);
     }
 
-    osaSleep(500*cmn_ms);
-    VCS_ClearFault(mRobot.mHandles[0], 0, &mRobot.mErrorCode);
-    osaSleep(500*cmn_ms);
+    if (!VCS_SendNMTService(mRobot.mHandles[0], 0, 129, &mRobot.mErrorCode)) {
+        CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_SendNMTService failed (errorCode = "
+                                << mRobot.mErrorCode << ")\n";
+        exit(EXIT_FAILURE);
+    }
+    // Wait for reset
+    osaSleep(333*cmn_ms);
+    if (!VCS_ClearFault(mRobot.mHandles[0], 0, &mRobot.mErrorCode)) {
+        CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_ClearFault failed (errorCode = "
+                                << mRobot.mErrorCode << ")\n";
+        exit(EXIT_FAILURE);
+    }
+    osaSleep(333*cmn_ms);
+    VCS_SendNMTService(mRobot.mHandles[0], 0, 1, &mRobot.mErrorCode);
+    osaSleep(333*cmn_ms);
 
     unsigned int oldTimeout;
     if (!VCS_GetProtocolStackSettings(mRobot.mHandles[0], &mRobot.baudrate, &oldTimeout, &mRobot.mErrorCode)) {
@@ -195,23 +199,28 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
         exit(EXIT_FAILURE);
     }
 
-    SetupInterfaces();
+    std::cout<<"Startup Complete!"<<std::endl;
 }
 
 void mtsMaxonEPOS::Run()
 {
-    int isFault = false;
+    uint16_t opState;
+    bool isFault = false;
     // First axis USB, rest of the axis are CAN
     for (size_t axis = 0; axis < mRobot.mNumAxes; ++axis) {
 
         // Zero errorCode
         mRobot.mErrorCode = 0;
-        if (VCS_GetFaultState(mRobot.mHandles[axis],  mRobot.mAxisToNodeIDMap[axis], &isFault,  &mRobot.mErrorCode)) {
-            if(isFault){
+        if (VCS_GetState(mRobot.mHandles[axis],  mRobot.mAxisToNodeIDMap[axis], &opState,  &mRobot.mErrorCode)) {
+            if(opState==0){ //Disable
+                mRobot.mActuatorState.MotorOff()[axis] = true;
+            }
+            if(opState==1){ //Enable
                 mRobot.mActuatorState.MotorOff()[axis] = false;
-                mRobot.mActuatorState.InMotion()[axis] = false;
-                mRobot.mInterface->SendError(mRobot.name + ": Axis: " + std::to_string(axis) + " is in fault state");
-                break;
+            }
+            if(opState==3){ //Fault
+                mRobot.mActuatorState.MotorOff()[axis] = true;
+                isFault = true;
             }
         } else {
             mRobot.mInterface->SendError(mRobot.name + ": GetFaultState failed (err=" + std::to_string(mRobot.mErrorCode) + ")");
@@ -233,18 +242,11 @@ void mtsMaxonEPOS::Run()
         if (VCS_GetVelocityIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &velocityCounts, &mRobot.mErrorCode)) {
             mRobot.m_measured_js.Velocity()[axis] = static_cast<double>(velocityCounts);
             mRobot.mActuatorState.Velocity()[axis] = static_cast<double>(velocityCounts);
+            mRobot.mActuatorState.InMotion()[axis] = (velocityCounts != 0);
         } else {
             mRobot.mInterface->SendError(mRobot.name + ": GetVelocityIs failed (err=" + std::to_string(mRobot.mErrorCode) + ")");
             break;
         }
-
-        // Check state
-        VCS_GetEnableState(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &mRobot.mMotorPowerOn, &mRobot.mErrorCode);
-        mRobot.mActuatorState.MotorOff()[axis] = !mRobot.mMotorPowerOn;
-
-        // Update movement status
-        mRobot.mMotionActive = (velocityCounts != 0);
-        mRobot.mActuatorState.InMotion()[axis] = mRobot.mMotionActive;
     }
 
     if(isFault){
@@ -254,10 +256,11 @@ void mtsMaxonEPOS::Run()
     }else{
         mRobot.newState = prmOperatingState::ENABLED;
     }
+
     if (mRobot.newState != mRobot.m_op_state.State()) {
         mRobot.m_op_state.SetState(mRobot.newState);
         // Trigger event
-        // operating_state(m_op_state);
+        mRobot.operating_state(mRobot.m_op_state);
     }
 
     // Advance the state table now, so that any connected components can get
@@ -351,9 +354,9 @@ void mtsMaxonEPOS::RobotData::EnableMotorPower(void)
     try {
 
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
-            int isFault = false; 
-
+             
             // 2.1) Clear fault
+            int isFault;
             if (!VCS_GetFaultState(mHandles[axis], mAxisToNodeIDMap[axis], &isFault, &mErrorCode)) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
@@ -370,13 +373,14 @@ void mtsMaxonEPOS::RobotData::EnableMotorPower(void)
             }
 
             // 2.2) Enable power
-            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &mMotorPowerOn, &mErrorCode)) {
+            int isOn;
+            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &isOn, &mErrorCode)) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " GetEnableState failed (err=" + std::to_string(mErrorCode) + ")"
                 );
             }
-            if (!mMotorPowerOn) {
+            if (!isOn) {
                 if (!VCS_SetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
@@ -401,14 +405,15 @@ void mtsMaxonEPOS::RobotData::DisableMotorPower(void)
     try {
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // Find enable state
-            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &mMotorPowerOn, &mErrorCode)) {
+            int isOn;
+            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &isOn, &mErrorCode)) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " GetEnableState failed (err=" + std::to_string(mErrorCode) + ")"
                 );
             }
             // Disable only enable state
-            if (mMotorPowerOn) {
+            if (isOn) {
                 if (!VCS_SetDisableState(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
@@ -417,8 +422,6 @@ void mtsMaxonEPOS::RobotData::DisableMotorPower(void)
                 }
             }
         }
-
-        // mActuatorState.MotorOff().SetAll(true);
     }
     catch (const std::runtime_error & e) {
         mInterface->SendError(name + ": DisableMotorPower (" + e.what() + ")");
@@ -438,7 +441,6 @@ void mtsMaxonEPOS::RobotData::servo_jv(const prmVelocityJointSet & jtvel)
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // 2.1) Active Velocity Mode.
             if (mState[axis] != ST_VM) {
-                // Check if hold(); is needed here.
                 if (!VCS_ActivateVelocityMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
@@ -482,7 +484,6 @@ void mtsMaxonEPOS::RobotData::servo_jp(const prmPositionJointSet & jtpos)
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // 2.1 Position Mode（CSP）
             if(mState[axis] != ST_PM){
-                // Check if hold(); is needed here.
                 if (!VCS_ActivatePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
                     throw std::runtime_error(
                         "ActivatePositionMode failed on axis " + std::to_string(axis) +
@@ -599,7 +600,6 @@ void mtsMaxonEPOS::RobotData::hold(void)
                 break;
         }
     }
-    // Clear moving flag.
 }
 
 void mtsMaxonEPOS::RobotData::SetPositionProfile(

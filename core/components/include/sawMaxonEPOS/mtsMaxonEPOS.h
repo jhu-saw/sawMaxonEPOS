@@ -77,14 +77,12 @@ protected:
         
         prmOperatingState m_op_state;           // Operating state (CRTK)
         prmOperatingState::StateType newState;
-        // mtsFunctionWrite operating_state;       // Event generator
+        mtsFunctionWrite operating_state;       // Event generator
 
         prmActuatorState mActuatorState;        // Actuator state
 
         vctUIntVec    mAxisToNodeIDMap;         // Map from axis number to nodeID
 
-        int           mMotorPowerOn;            // Whether motor power is on (for all configured motors)
-        bool          mMotionActive;            // Whether a motion is active
         vctUIntVec    mState;                   // Internal axis state machine
         
         mtsInterfaceProvided *mInterface;       // Provided interface
