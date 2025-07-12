@@ -1,1 +1,20 @@
 # sawMaxonController
+
+This SAW package contains the `mtsMaxonEPOS` component, which interfaces with Maxon controllers using the EPOS Command Library over USB. To use this package, download and install the EPOS Command Library from:
+https://www.maxongroup.com/medias/sys_master/8823917281310.pdf
+
+The component is designed to be generic and is configured via JSON files. Each JSON file specifies connection parameters, including:
+- `port`
+- `nodeId`
+- `deviceName`
+- `protocolStackName`
+
+This component supports controlling multiple controllers simultaneously. The computer communicates with the master controller via USB, and additional controllers are daisy-chained over CAN. Please refer to the hardware manual for wiring details.
+
+**Control frequency:** TBD (to be determined through testing).
+
+> **Note:**  
+> Each EPOS controller has onboard EEPROM that stores the calibration parameters for its connected motor.  
+> Calibration **must** be performed before first use. To calibrate, use Maxon’s EPOS Studio. Once calibration is complete and the parameters are downloaded to the controller, no further calibration is required.
+
+Most of the source code lives in the `core` subdirectory. A console test program is also provided as an example of usage.
