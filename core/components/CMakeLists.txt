@@ -43,8 +43,8 @@ if (cisst_FOUND_AS_REQUIRED)
 
   if (EposCmdLib_FOUND)
 
-    include_directories (${EposCmdLib_INCLUDE_DIR})
-    link_directories (${EposCmdLib_LIBRARY_DIR})
+    include_directories ("${EposCmdLib_INCLUDE_DIR}")
+    link_directories ("${EposCmdLib_LIBRARY_DIR}")
 
     set (sawMaxonEPOS_INCLUDE_DIR
       "${sawMaxonEPOS_SOURCE_DIR}/include"
@@ -79,7 +79,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
     target_link_libraries (
       sawMaxonEPOS
-      ${EposCmdLib_LIBRARY})
+      ${EposCmdLib_LIBRARIES})
 
     cisst_target_link_libraries (
       sawMaxonEPOS
