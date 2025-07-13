@@ -16,6 +16,5 @@ The JSON file contains the following fields:
 | interface_name |          | Name of interface (e.g., "USB")                       |
 | port_name     |           | Name of port used                                     |
 | timeout       |           | Timeout for communications (msec)                     |
-|               |           |
 | axes          |           | Array of robot axis configuration data (see below)    |
 |  - nodeid     |           |  - Node id for controller                             |
