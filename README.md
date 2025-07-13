@@ -3,11 +3,8 @@
 This SAW package contains the `mtsMaxonEPOS` component, which interfaces with Maxon controllers using the EPOS Command Library over USB. To use this package, download and install the EPOS Command Library from:
 https://www.maxongroup.com/medias/sys_master/8823917281310.pdf
 
-The component is designed to be generic and is configured via JSON files. Each JSON file specifies connection parameters, including:
-- `port`
-- `nodeId`
-- `deviceName`
-- `protocolStackName`
+The component is designed to be generic and is configured via a JSON file.
+See the [README](./core/share/README.md) in the `share` directory for details and an example.
 
 This component supports controlling multiple controllers simultaneously. The computer communicates with the master controller via USB, and additional controllers are daisy-chained over CAN. Please refer to the hardware manual for wiring details.
 
