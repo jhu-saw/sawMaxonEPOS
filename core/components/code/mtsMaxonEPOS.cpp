@@ -1,7 +1,8 @@
 /* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /*
-  Author(s): Peter Kazanzides, Dimitri Lezcano, Anton Deguet
+  Author(s): Haochen Wei, Peter Kazanzides, Anton Deguet
   (C) Copyright 2024-2025 Johns Hopkins University (JHU)
+
 --- begin cisst license - do not edit ---
 This software is provided "as is" under an open source license, with no warranty.
 --- end cisst license ---
@@ -63,7 +64,7 @@ void mtsMaxonEPOS::SetupInterfaces(void)
 
         // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::EnableMotorPower,  &mRobot, "EnableMotorPower");
         // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::DisableMotorPower, &mRobot, "DisableMotorPower");
-        // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::hold,     &mRobot, "hold");
+        prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::hold,     &mRobot, "hold");
 
     }
 }
@@ -206,7 +207,7 @@ void mtsMaxonEPOS::Run()
 {
     uint16_t opState;
     bool isFault = false;
-    // First axis USB, rest of the axis are CAN
+    // First axis USB, rest of the axes are CAN
     for (size_t axis = 0; axis < mRobot.mNumAxes; ++axis) {
 
         // Zero errorCode
@@ -279,10 +280,9 @@ void mtsMaxonEPOS::Run()
     }
 }
 
-// Fixed
 void mtsMaxonEPOS::Close()
 {
-    // 1) Close sub device first
+    // 1) Close sub devices first
     for (size_t axis = 1; axis < mRobot.mHandles.size(); ++axis) {
         if (mRobot.mHandles[axis]) {
             if (!VCS_CloseSubDevice(mRobot.mHandles[axis], &mRobot.mErrorCode) || mRobot.mErrorCode != 0) {
@@ -345,7 +345,6 @@ void mtsMaxonEPOS::RobotData::state_command(const std::string &command)
     }
 }
 
-// Fixed
 void mtsMaxonEPOS::RobotData::EnableMotorPower(void)
 {
     if (!mParent) {return;}
@@ -396,7 +395,6 @@ void mtsMaxonEPOS::RobotData::EnableMotorPower(void)
     }
 }
 
-// Fixed
 void mtsMaxonEPOS::RobotData::DisableMotorPower(void)
 {
     if (!mParent) {return;}
@@ -521,7 +519,7 @@ void mtsMaxonEPOS::RobotData::move_jp(const prmPositionJointSet & jtpos)
     mErrorCode = 0;
     try {
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
-            // 1) Active Profile Position Mode
+            // 1) Activate Profile Position Mode
             if(mState[axis] != ST_PPM){
                 if (!VCS_ActivateProfilePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
                     throw std::runtime_error(
@@ -554,7 +552,6 @@ void mtsMaxonEPOS::RobotData::move_jp(const prmPositionJointSet & jtpos)
     }
 }
 
-// Fixed
 void mtsMaxonEPOS::RobotData::hold(void)
 {
     if (!mParent) {return;}
@@ -595,7 +592,7 @@ void mtsMaxonEPOS::RobotData::hold(void)
                 if (!VCS_SetVelocityMust(mHandles[axis], mAxisToNodeIDMap[axis], 0, &mErrorCode)) {
                     mInterface->SendWarning(name + ": " +
                         " axis " + std::to_string(axis) +
-                        " HaltVelicty(default) failed (err=" + std::to_string(mErrorCode) + ")");
+                        " HaltVelocity(default) failed (err=" + std::to_string(mErrorCode) + ")");
                 }
                 break;
         }

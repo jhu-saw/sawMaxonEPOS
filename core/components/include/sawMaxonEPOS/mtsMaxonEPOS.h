@@ -2,9 +2,9 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
-  Author(s): Peter Kazanzides, Dimitri Lezcano, Anton Deguet
+  Author(s): Haochen Wei, Peter Kazanzides, Anton Deguet
 
-  (C) Copyright 2024-2025 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2025 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -127,10 +127,6 @@ protected:
     void Close();
 
     void SetupInterfaces();
-
-    // Abort robot command
-    void AbortProgram();
-    void AbortMotion();
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsMaxonEPOS)

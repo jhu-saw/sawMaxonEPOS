@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2016-2024 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2016-2025 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -9,7 +9,7 @@
 #
 # --- end cisst license ---
 
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.16)
 project (sawMaxonEPOS VERSION 0.1.0)
 
 # So we can use FindEposCmdLib.cmake
@@ -38,7 +38,7 @@ if (cisst_FOUND_AS_REQUIRED)
   cisst_set_output_path ()
 
 
-  # Find maxon EposCmdLib but don't fail if not found
+  # Find Maxon EposCmdLib but don't fail if not found
   find_package (EposCmdLib)
 
   if (EposCmdLib_FOUND)

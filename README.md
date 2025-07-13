@@ -1,4 +1,4 @@
-# sawMaxonController
+# sawMaxonEPOS
 
 This SAW package contains the `mtsMaxonEPOS` component, which interfaces with Maxon controllers using the EPOS Command Library over USB. To use this package, download and install the EPOS Command Library from:
 https://www.maxongroup.com/medias/sys_master/8823917281310.pdf
