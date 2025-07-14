@@ -4,7 +4,7 @@
   <description>sawMaxonEPOS text console</description>
   <maintainer email="hwei15@jhu.edu">Haochen Wei</maintainer>
   <license>cisst</license>
-  <url>https://github.com/jhu-saw/sawGalilController</url>
+  <url>https://github.com/jhu-saw/sawMaxonEPOS</url>
 
   <build_depend>cisst</build_depend>
   <build_depend>saw_maxon_epos</build_depend>
