@@ -11,8 +11,15 @@ This software is provided "as is" under an open source license, with no warranty
 #include "Definitions.h"  // EPOS Command Library
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnAssert.h>
+#include <cisstCommon/cmnPortability.h>
 #include <cisstOSAbstraction/osaSleep.h>
 #include <sawMaxonEPOS/mtsMaxonEPOS.h>
+
+#if (CISST_OS == CISST_WINDOWS)
+#define DWORD_CAST(A) (reinterpret_cast<DWORD *>(A))
+#else
+#define DWORD_CAST(A) (A)
+#endif
 
 enum OP_STATES { ST_PPM, ST_PVM, ST_PM, ST_VM, ST_CM, ST_HM, ST_MEM, ST_SDM, ST_IPM };
 
@@ -152,7 +159,7 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
                                 const_cast<char*>(mRobot.protocolStackName.c_str()),
                                 const_cast<char*>(mRobot.interfaceName.c_str()),
                                 const_cast<char*>(mRobot.portName.c_str()),
-                                &mRobot.mErrorCode);
+                                DWORD_CAST(&mRobot.mErrorCode));
 
     if (mRobot.mHandles[0] != nullptr && mRobot.mErrorCode == 0){
         std::cout<<"Root node successfully connected"<<std::endl;
@@ -160,7 +167,7 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
             mRobot.mHandles[j] = VCS_OpenSubDevice(mRobot.mHandles[0],
                                 const_cast<char*>(mRobot.deviceName.c_str()),
                                 const_cast<char*>("CANopen"),
-                                &mRobot.mErrorCode);
+                                DWORD_CAST(&mRobot.mErrorCode));
             if(mRobot.mHandles[j]==0){
                 CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_OpenSubDevice " << j << " failed (errorCode = " << mRobot.mErrorCode << ")" << std::endl;
                 exit(EXIT_FAILURE);
@@ -172,29 +179,29 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
         exit(EXIT_FAILURE);
     }
 
-    if (!VCS_SendNMTService(mRobot.mHandles[0], 0, 129, &mRobot.mErrorCode)) {
+    if (!VCS_SendNMTService(mRobot.mHandles[0], 0, 129, DWORD_CAST(&mRobot.mErrorCode))) {
         CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_SendNMTService failed (errorCode = "
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
     }
     // Wait for reset
     osaSleep(333*cmn_ms);
-    if (!VCS_ClearFault(mRobot.mHandles[0], 0, &mRobot.mErrorCode)) {
+    if (!VCS_ClearFault(mRobot.mHandles[0], 0, DWORD_CAST(&mRobot.mErrorCode))) {
         CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_ClearFault failed (errorCode = "
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
     }
     osaSleep(333*cmn_ms);
-    VCS_SendNMTService(mRobot.mHandles[0], 0, 1, &mRobot.mErrorCode);
+    VCS_SendNMTService(mRobot.mHandles[0], 0, 1, DWORD_CAST(&mRobot.mErrorCode));
     osaSleep(333*cmn_ms);
 
     unsigned int oldTimeout;
-    if (!VCS_GetProtocolStackSettings(mRobot.mHandles[0], &mRobot.baudrate, &oldTimeout, &mRobot.mErrorCode)) {
+    if (!VCS_GetProtocolStackSettings(mRobot.mHandles[0], DWORD_CAST(&mRobot.baudrate), DWORD_CAST(&oldTimeout), DWORD_CAST(&mRobot.mErrorCode))) {
         CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_GetProtocolStackSettings failed (errorCode = "
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
     }
-    if (!VCS_SetProtocolStackSettings(mRobot.mHandles[0], mRobot.baudrate, mRobot.mTimeout, &mRobot.mErrorCode)) {
+    if (!VCS_SetProtocolStackSettings(mRobot.mHandles[0], mRobot.baudrate, mRobot.mTimeout, DWORD_CAST(&mRobot.mErrorCode))) {
         CMN_LOG_CLASS_INIT_ERROR << "Startup: VCS_SetProtocolStackSettings failed (errorCode = "
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
@@ -212,7 +219,7 @@ void mtsMaxonEPOS::Run()
 
         // Zero errorCode
         mRobot.mErrorCode = 0;
-        if (VCS_GetState(mRobot.mHandles[axis],  mRobot.mAxisToNodeIDMap[axis], &opState,  &mRobot.mErrorCode)) {
+        if (VCS_GetState(mRobot.mHandles[axis],  mRobot.mAxisToNodeIDMap[axis], &opState,  DWORD_CAST(&mRobot.mErrorCode))) {
             if(opState==0){ //Disable
                 mRobot.mActuatorState.MotorOff()[axis] = true;
             }
@@ -229,8 +236,12 @@ void mtsMaxonEPOS::Run()
         };
 
         // Read position
+#if (CISST_OS == CISST_WINDOWS)
+        long positionCounts = 0;
+#else
         int positionCounts = 0;
-        if (VCS_GetPositionIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &positionCounts, &mRobot.mErrorCode)) {
+#endif
+        if (VCS_GetPositionIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &positionCounts, DWORD_CAST(&mRobot.mErrorCode))) {
             mRobot.m_measured_js.Position()[axis] = static_cast<double>(positionCounts);
             mRobot.mActuatorState.Position()[axis] = static_cast<double>(positionCounts);
         } else {
@@ -239,8 +250,12 @@ void mtsMaxonEPOS::Run()
         }
 
         // Read Velocity
+#if (CISST_OS == CISST_WINDOWS)
+        long velocityCounts = 0;
+#else
         int velocityCounts = 0;
-        if (VCS_GetVelocityIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &velocityCounts, &mRobot.mErrorCode)) {
+#endif
+        if (VCS_GetVelocityIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &velocityCounts, DWORD_CAST(&mRobot.mErrorCode))) {
             mRobot.m_measured_js.Velocity()[axis] = static_cast<double>(velocityCounts);
             mRobot.mActuatorState.Velocity()[axis] = static_cast<double>(velocityCounts);
             mRobot.mActuatorState.InMotion()[axis] = (velocityCounts != 0);
@@ -285,7 +300,7 @@ void mtsMaxonEPOS::Close()
     // 1) Close sub devices first
     for (size_t axis = 1; axis < mRobot.mHandles.size(); ++axis) {
         if (mRobot.mHandles[axis]) {
-            if (!VCS_CloseSubDevice(mRobot.mHandles[axis], &mRobot.mErrorCode) || mRobot.mErrorCode != 0) {
+            if (!VCS_CloseSubDevice(mRobot.mHandles[axis], DWORD_CAST(&mRobot.mErrorCode)) || mRobot.mErrorCode != 0) {
                 CMN_LOG_CLASS_RUN_ERROR 
                     << mRobot.name 
                     << "[axis " << axis 
@@ -294,7 +309,7 @@ void mtsMaxonEPOS::Close()
             mRobot.mHandles[axis] = nullptr;
         }
     }
-    if (!VCS_CloseDevice(mRobot.mHandles[0], &mRobot.mErrorCode) || mRobot.mErrorCode != 0) {
+    if (!VCS_CloseDevice(mRobot.mHandles[0], DWORD_CAST(&mRobot.mErrorCode)) || mRobot.mErrorCode != 0) {
         CMN_LOG_CLASS_RUN_ERROR 
             << mRobot.name 
             << "[gateway] CloseDevice failed (errorCode=" << mRobot.mErrorCode << ")\n";
@@ -356,14 +371,14 @@ void mtsMaxonEPOS::RobotData::EnableMotorPower(void)
              
             // 2.1) Clear fault
             int isFault;
-            if (!VCS_GetFaultState(mHandles[axis], mAxisToNodeIDMap[axis], &isFault, &mErrorCode)) {
+            if (!VCS_GetFaultState(mHandles[axis], mAxisToNodeIDMap[axis], &isFault, DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " GetFaultState failed (err=" + std::to_string(mErrorCode) + ")"
                 );
             }
             if (isFault) {
-                if (!VCS_ClearFault(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_ClearFault(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
                         " ClearFault failed (err=" + std::to_string(mErrorCode) + ")"
@@ -373,14 +388,14 @@ void mtsMaxonEPOS::RobotData::EnableMotorPower(void)
 
             // 2.2) Enable power
             int isOn;
-            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &isOn, &mErrorCode)) {
+            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &isOn, DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " GetEnableState failed (err=" + std::to_string(mErrorCode) + ")"
                 );
             }
             if (!isOn) {
-                if (!VCS_SetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_SetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
                         " SetEnableState failed (err=" + std::to_string(mErrorCode) + ")"
@@ -404,7 +419,7 @@ void mtsMaxonEPOS::RobotData::DisableMotorPower(void)
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // Find enable state
             int isOn;
-            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &isOn, &mErrorCode)) {
+            if (!VCS_GetEnableState(mHandles[axis], mAxisToNodeIDMap[axis], &isOn, DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " GetEnableState failed (err=" + std::to_string(mErrorCode) + ")"
@@ -412,7 +427,7 @@ void mtsMaxonEPOS::RobotData::DisableMotorPower(void)
             }
             // Disable only enable state
             if (isOn) {
-                if (!VCS_SetDisableState(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_SetDisableState(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
                         " SetDisableState failed (err=" + std::to_string(mErrorCode) + ")"
@@ -439,7 +454,7 @@ void mtsMaxonEPOS::RobotData::servo_jv(const prmVelocityJointSet & jtvel)
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // 2.1) Active Velocity Mode.
             if (mState[axis] != ST_VM) {
-                if (!VCS_ActivateVelocityMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_ActivateVelocityMode(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
                         " ActivateVelocityMode failed (err=" +
@@ -450,7 +465,7 @@ void mtsMaxonEPOS::RobotData::servo_jv(const prmVelocityJointSet & jtvel)
             }
 
             // 2.2) Velocity set‐point
-            if (!VCS_SetVelocityMust(mHandles[axis], mAxisToNodeIDMap[axis], jtvel.Goal()[axis], &mErrorCode)) {
+            if (!VCS_SetVelocityMust(mHandles[axis], mAxisToNodeIDMap[axis], jtvel.Goal()[axis], DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " SetVelocityMust failed (err=" +
@@ -482,7 +497,7 @@ void mtsMaxonEPOS::RobotData::servo_jp(const prmPositionJointSet & jtpos)
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // 2.1 Position Mode（CSP）
             if(mState[axis] != ST_PM){
-                if (!VCS_ActivatePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_ActivatePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     throw std::runtime_error(
                         "ActivatePositionMode failed on axis " + std::to_string(axis) +
                         " (err=" + std::to_string(mErrorCode) + ")"
@@ -492,7 +507,7 @@ void mtsMaxonEPOS::RobotData::servo_jp(const prmPositionJointSet & jtpos)
             }
 
             // 2.2 Position Must
-            if (!VCS_SetPositionMust(mHandles[axis], mAxisToNodeIDMap[axis], jtpos.Goal()[axis], &mErrorCode)) {
+            if (!VCS_SetPositionMust(mHandles[axis], mAxisToNodeIDMap[axis], jtpos.Goal()[axis], DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "SetPositionMust failed on axis " + std::to_string(axis) +
                     " (err=" + std::to_string(mErrorCode) + ")"
@@ -521,7 +536,7 @@ void mtsMaxonEPOS::RobotData::move_jp(const prmPositionJointSet & jtpos)
         for (size_t axis = 0; axis < mNumAxes; ++axis) {
             // 1) Activate Profile Position Mode
             if(mState[axis] != ST_PPM){
-                if (!VCS_ActivateProfilePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_ActivateProfilePositionMode(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     throw std::runtime_error(
                         "Axis " + std::to_string(axis) +
                         " ActivateProfilePositionMode failed (err=" +
@@ -536,7 +551,7 @@ void mtsMaxonEPOS::RobotData::move_jp(const prmPositionJointSet & jtpos)
                                     jtpos.Goal()[axis],
                                     /*Absolute*/  1,
                                     /*Immediate*/ 1,
-                                    &mErrorCode)) {
+                                    DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " MoveToPosition failed (err=" +
@@ -571,7 +586,7 @@ void mtsMaxonEPOS::RobotData::hold(void)
         switch (mState[axis]) {
             case ST_PVM:
                 // Velocity Profile mode
-                if (!VCS_HaltVelocityMovement(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_HaltVelocityMovement(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     mInterface->SendWarning(name + ": " +
                         " axis " + std::to_string(axis) +
                         " HaltVelocityMovement failed (err=" + std::to_string(mErrorCode) + ")");
@@ -580,7 +595,7 @@ void mtsMaxonEPOS::RobotData::hold(void)
 
             case ST_PPM:
                 // Position Profile Mode
-                if (!VCS_HaltPositionMovement(mHandles[axis], mAxisToNodeIDMap[axis], &mErrorCode)) {
+                if (!VCS_HaltPositionMovement(mHandles[axis], mAxisToNodeIDMap[axis], DWORD_CAST(&mErrorCode))) {
                     mInterface->SendWarning(name + ": " +
                         " axis " + std::to_string(axis) +
                         " HaltPositionMovement(default) failed (err=" + std::to_string(mErrorCode) + ")");
@@ -589,7 +604,7 @@ void mtsMaxonEPOS::RobotData::hold(void)
 
             case ST_VM:
                 // Velocity mode
-                if (!VCS_SetVelocityMust(mHandles[axis], mAxisToNodeIDMap[axis], 0, &mErrorCode)) {
+                if (!VCS_SetVelocityMust(mHandles[axis], mAxisToNodeIDMap[axis], 0, DWORD_CAST(&mErrorCode))) {
                     mInterface->SendWarning(name + ": " +
                         " axis " + std::to_string(axis) +
                         " HaltVelocity(default) failed (err=" + std::to_string(mErrorCode) + ")");
@@ -613,7 +628,8 @@ void mtsMaxonEPOS::RobotData::SetPositionProfile(
                 continue;
             }
 
-            if (!VCS_SetPositionProfile(mHandles[axis], mAxisToNodeIDMap[axis],profileVelocity[axis],profileAcceleration[axis],profileDeceleration[axis],&mErrorCode)) {
+            if (!VCS_SetPositionProfile(mHandles[axis], mAxisToNodeIDMap[axis], profileVelocity[axis], profileAcceleration[axis],
+                                        profileDeceleration[axis], DWORD_CAST(&mErrorCode))) {
                 throw std::runtime_error(
                     "Axis " + std::to_string(axis) +
                     " SetPositionProfile failed (err=" +
