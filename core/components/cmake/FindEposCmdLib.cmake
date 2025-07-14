@@ -41,6 +41,7 @@ if(EposCmdLib_INCLUDE_DIR)
       endif()
       find_library(EposCmdLib_LIBRARY
           NAMES EposCmd${EposCmd_SUFFIX}
+          HINTS ${EposCmdLib_INCLUDE_DIR}
           DOC "EPOS Command library")
     else()
       # Look for the versioned shared object
