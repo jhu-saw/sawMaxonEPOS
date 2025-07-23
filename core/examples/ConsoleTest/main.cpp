@@ -50,6 +50,9 @@ private:
     mtsFunctionWrite servo_jv;
     mtsFunctionWrite state_command;
 
+    mtsFunctionRead period_statistics;
+    mtsIntervalStatistics period_stats;
+
     void OnStatusEvent(const mtsMessage &msg) {
         std::cout << std::endl << "Status: " << msg.Message << std::endl;
     }
@@ -64,7 +67,7 @@ public:
 
     MaxonClient() : mtsTaskMain("MaxonClient"), NumAxes(0)
     {
-        mtsInterfaceRequired *req = AddInterfaceRequired("Input", MTS_OPTIONAL);
+        mtsInterfaceRequired *req = AddInterfaceRequired("Input");
         if (req) {
             req->AddFunction("measured_js", measured_js);
             req->AddFunction("setpoint_js", setpoint_js);
@@ -74,6 +77,7 @@ public:
             req->AddFunction("move_jp", move_jp);
             req->AddFunction("servo_jv", servo_jv);
             req->AddFunction("state_command", state_command);
+            req->AddFunction("period_statistics", period_statistics);
         }
     }
 
@@ -121,6 +125,7 @@ public:
         m_measured_js.GetPosition(jtpos);
         m_measured_js.GetVelocity(jtvel);
         operating_state(m_op_state);
+        period_statistics(period_stats);
 
         char c = 0;
         size_t i;
@@ -199,6 +204,8 @@ public:
         for (i = 0; i < jtvel.size(); i++)
             printf(" %7.2lf ", jtvel[i]);
         printf("]\r");
+
+        // std::cout<<"XXX: "<<period_stats.PeriodAvg()<<std::endl;
 
         osaSleep(0.01);  // to avoid taking too much CPU time
     }

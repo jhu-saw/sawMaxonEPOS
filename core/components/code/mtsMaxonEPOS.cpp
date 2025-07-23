@@ -73,6 +73,8 @@ void mtsMaxonEPOS::SetupInterfaces(void)
         // prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::DisableMotorPower, &mRobot, "DisableMotorPower");
         prov->AddCommandVoid(&mtsMaxonEPOS::RobotData::hold,     &mRobot, "hold");
 
+        prov->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
+        
     }
 }
 
