@@ -208,8 +208,6 @@ void mtsMaxonEPOS::Startup()//const std::string & fileName
                                 << mRobot.mErrorCode << ")\n";
         exit(EXIT_FAILURE);
     }
-
-    std::cout<<"Startup Complete!"<<std::endl;
 }
 
 void mtsMaxonEPOS::Run()
