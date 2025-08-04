@@ -74,6 +74,7 @@ protected:
 
         prmStateJoint m_measured_js;            // Measured joint state (CRTK)
         prmStateJoint m_setpoint_js;            // Setpoint joint state (CRTK)
+        vctDoubleVec offset_js;                 // read offset for zero.
         
         prmOperatingState m_op_state;           // Operating state (CRTK)
         prmOperatingState::StateType newState;
@@ -92,7 +93,6 @@ protected:
         mtsMaxonEPOS *mParent;            // Pointer to parent object
 
         std::vector<void*> mHandles;
-        // std::vector<std::string> mCalibrationFile;
 
         // Move joint to specified position
         //  servo_jp:  uses Position Tracking mode (PT)

@@ -140,6 +140,9 @@ void mtsMaxonEPOS::Configure(const std::string& fileName)
 
     mRobot.mAxisToNodeIDMap.SetSize(numAxes);
 
+    mRobot.offset_js.SetSize(numAxes);
+    mRobot.offset_js.SetAll(0.0);
+
     mRobot.mState.SetSize(numAxes);
     mRobot.mState.SetAll(ST_PPM);
 
@@ -242,8 +245,8 @@ void mtsMaxonEPOS::Run()
         int positionCounts = 0;
 #endif
         if (VCS_GetPositionIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &positionCounts, DWORD_CAST(&mRobot.mErrorCode))) {
-            mRobot.m_measured_js.Position()[axis] = static_cast<double>(positionCounts);
-            mRobot.mActuatorState.Position()[axis] = static_cast<double>(positionCounts);
+            mRobot.m_measured_js.Position()[axis] = static_cast<double>(positionCounts) - mRobot.offset_js[axis];
+            mRobot.mActuatorState.Position()[axis] = static_cast<double>(positionCounts) - mRobot.offset_js[axis];
         } else {
             mRobot.mInterface->SendError(mRobot.name + ": GetPositionIs failed (err=" + std::to_string(mRobot.mErrorCode) + ")");
             break;
@@ -333,13 +336,11 @@ void mtsMaxonEPOS::RobotData::state_command(const std::string &command)
                 return;
             }
             if (command == "home") {
-                // vctBoolVec homingMask(mNumAxes, true);
-                // Home(homingMask);
+                offset_js -= m_measured_js.Position();
                 return;
             }
             if (command == "unhome") {
-                // vctBoolVec homingMask(mNumAxes, true);
-                // UnHome(homingMask);
+                offset_js.SetAll(0.0);
                 return;
             }
             if (command == "pause") {
