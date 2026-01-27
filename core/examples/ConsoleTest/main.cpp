@@ -30,6 +30,9 @@ http://www.cisst.org/cisst/license.txt.
 
 class MaxonClient : public mtsTaskMain {
 private:
+    std::ifstream fin;
+    std::istream* in = &std::cin; 
+
     size_t NumAxes;
     vctDoubleVec jtpgoal, jtvgoal;
     vctDoubleVec jtpos, jtvel;
@@ -81,7 +84,14 @@ public:
         }
     }
 
-    void Configure(const std::string&) {}
+    void Configure(const std::string& fileName) {
+        fin.open(fileName);
+        if (!fin) {
+            std::cerr << "Failed to open file\n";
+            return;
+        }
+        in = &fin;
+    }
 
     void PrintHelp()
     {
@@ -89,8 +99,8 @@ public:
                   << "  m: position move joints (servo_jp)" << std::endl
                   << "  p: profile move joints (move_jr)" << std::endl
                   << "  v: velocity move joints (servo_jv)" << std::endl
+                  << "  c: script move" << std::endl
                   << "  s: stop move (hold)" << std::endl
-                  << "  c: send command" << std::endl
                   << "  h: display help information" << std::endl
                   << "  e: enable motor power" << std::endl
                   << "  n: disable motor power" << std::endl
@@ -158,7 +168,37 @@ public:
                 jtvelSet.SetGoal(jtvgoal);
                 servo_jv(jtvelSet);
                 break;
+            
+            case 'c':   // velocity move joint
+                std::cout << std::endl << "Move with input script";
+                while (true){
+                    measured_js(m_measured_js);
+                    m_measured_js.GetPosition(jtpos);
+                    printf("Now at: [");
+                    for (i = 0; i < jtpos.size(); i++)
+                        printf(" %7.2lf ", jtpos[i]);
+                    printf("]");
+                    
+                    bool ok=true;
 
+                    for (i = 0; i < NumAxes; i++){
+                        
+                        if (!((*in) >> jtpgoal[i])) {
+                            ok = false;
+                            break;
+                        }
+                    }
+
+                    if (!ok) break;
+
+                    std::cout << "Moving to " << jtpgoal << std::endl;
+                    jtposSet.SetGoal(jtpgoal);
+                    servo_jp(jtposSet);
+                    osaSleep(1);
+                }
+                std::cout << "Script finished" << std::endl;
+                break;
+            
             case 's':   // stop move (hold)
                 state_command(std::string("pause"));
                 std::cout << " System pause" << std::endl;
@@ -223,6 +263,7 @@ int main(int argc, char **argv)
     if (argc < 2) {
         std::cout << "Syntax: sawMaxonConsole <config>" << std::endl;
         std::cout << "        <config>      Configuration file (JSON format)" << std::endl;
+        std::cout << "        <script>      Moving trace file (txt format)" << std::endl;
         return 0;
     }
 
@@ -235,6 +276,9 @@ int main(int argc, char **argv)
     componentManager->AddComponent(MaxonServer);
 
     MaxonClient client;
+    if (argc == 3) {
+        client.Configure(argv[2]);
+    }
     componentManager->AddComponent(&client);
 
     if (!componentManager->Connect(client.GetName(), "Input", MaxonServer->GetName(), "I2RIS")) {
