@@ -139,6 +139,7 @@ public:
 
         char c = 0;
         size_t i;
+        size_t pulse;
         if (cmnKbHit()) {
             c = cmnGetChar();
             switch (c) {
@@ -171,15 +172,27 @@ public:
             
             case 'c':   // velocity move joint
                 std::cout << std::endl << "Move with input script";
+                pulse = 0;
                 while (true){
+                    pulse++;
                     measured_js(m_measured_js);
                     m_measured_js.GetPosition(jtpos);
-                    printf("Now at: [");
+                    m_measured_js.GetVelocity(jtvel);
+                    printf("POS: [");
                     for (i = 0; i < jtpos.size(); i++)
                         printf(" %7.2lf ", jtpos[i]);
-                    printf("]");
+                    printf("] VELOCITY: [");
+                    for (i = 0; i < jtvel.size(); i++)
+                        printf(" %7.2lf ", jtvel[i]);
+                    printf("]\r");
+                    osaSleep(0.01);
                     
                     bool ok=true;
+                    
+                    if (pulse < 99){
+                        continue;
+                    }    
+                    pulse = 0;
 
                     for (i = 0; i < NumAxes; i++){
                         
@@ -194,7 +207,7 @@ public:
                     std::cout << "Moving to " << jtpgoal << std::endl;
                     jtposSet.SetGoal(jtpgoal);
                     servo_jp(jtposSet);
-                    osaSleep(1);
+                    
                 }
                 std::cout << "Script finished" << std::endl;
                 break;
