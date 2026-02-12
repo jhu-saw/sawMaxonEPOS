@@ -31,7 +31,8 @@ http://www.cisst.org/cisst/license.txt.
 class MaxonClient : public mtsTaskMain {
 private:
     std::ifstream fin;
-    std::istream* in = &std::cin; 
+    std::istream* in = &std::cin;
+    std::ofstream file; 
 
     size_t NumAxes;
     vctDoubleVec jtpgoal, jtvgoal;
@@ -111,6 +112,7 @@ public:
 
     void Startup()
     {
+        file.open("output.csv", std::ios::app);
         NumAxes = 0;
         const mtsGenericObject *p = measured_js.GetArgumentPrototype();
         const prmStateJoint *psj = dynamic_cast<const prmStateJoint *>(p);
@@ -173,23 +175,36 @@ public:
             case 'c':   // velocity move joint
                 std::cout << std::endl << "Move with input script";
                 pulse = 0;
+                
                 while (true){
                     pulse++;
                     measured_js(m_measured_js);
                     m_measured_js.GetPosition(jtpos);
                     m_measured_js.GetVelocity(jtvel);
+
+                    for (size_t i = 0; i < jtpos.size(); ++i)
+                        file << jtpos[i] << ",";
+
+                    for (size_t i = 0; i < jtvel.size(); ++i) {
+                        file << jtvel[i];
+                        if (i != jtvel.size() - 1)
+                            file << ",";
+                    }
+
+                    file << "\n";
+
                     printf("POS: [");
                     for (i = 0; i < jtpos.size(); i++)
                         printf(" %7.2lf ", jtpos[i]);
-                    printf("] VELOCITY: [");
+                    printf("] CURRENT: [");
                     for (i = 0; i < jtvel.size(); i++)
                         printf(" %7.2lf ", jtvel[i]);
                     printf("]\r");
-                    osaSleep(0.01);
+                    osaSleep(0.0333);
                     
                     bool ok=true;
                     
-                    if (pulse < 99){
+                    if (pulse < 10){
                         continue;
                     }    
                     pulse = 0;
@@ -209,6 +224,7 @@ public:
                     servo_jp(jtposSet);
                     
                 }
+                file.close();
                 std::cout << "Script finished" << std::endl;
                 break;
             

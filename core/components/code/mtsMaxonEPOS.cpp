@@ -256,9 +256,9 @@ void mtsMaxonEPOS::Run()
 #if (CISST_OS == CISST_WINDOWS)
         long velocityCounts = 0;
 #else
-        int velocityCounts = 0;
+        short velocityCounts = 0;
 #endif
-        if (VCS_GetVelocityIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &velocityCounts, DWORD_CAST(&mRobot.mErrorCode))) {
+        if (VCS_GetCurrentIs(mRobot.mHandles[axis], mRobot.mAxisToNodeIDMap[axis], &velocityCounts, DWORD_CAST(&mRobot.mErrorCode))) {
             mRobot.m_measured_js.Velocity()[axis] = static_cast<double>(velocityCounts);
             mRobot.mActuatorState.Velocity()[axis] = static_cast<double>(velocityCounts);
             mRobot.mActuatorState.InMotion()[axis] = (velocityCounts != 0);
