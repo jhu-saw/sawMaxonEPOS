@@ -16,6 +16,7 @@ http://www.cisst.org/cisst/license.txt.
 */
 
 #include <string>
+#include <chrono>
 
 #include <cisstCommon/cmnLogger.h>
 #include <cisstCommon/cmnKbHit.h>
@@ -181,6 +182,12 @@ public:
                     measured_js(m_measured_js);
                     m_measured_js.GetPosition(jtpos);
                     m_measured_js.GetVelocity(jtvel);
+                    
+                    auto now = std::chrono::system_clock::now();
+                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                now.time_since_epoch()).count();
+
+                    file << ms << ",";
 
                     for (size_t i = 0; i < jtpos.size(); ++i)
                         file << jtpos[i] << ",";
